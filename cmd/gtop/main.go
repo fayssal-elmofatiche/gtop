@@ -47,6 +47,8 @@ func main() {
 		health       git.BranchHealth
 		hotFiles     []git.HotFile
 		dates        []string
+		license      string
+		latestTag    string
 	)
 
 	var wg sync.WaitGroup
@@ -111,10 +113,22 @@ func main() {
 		dates, _ = git.GetCommitDates()
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		license = git.GetLicense()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		latestTag = git.GetLatestTag()
+	}()
+
 	wg.Wait()
 
 	logo := ui.RenderLogo()
-	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health)
+	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health, license, latestTag)
 	fmt.Println(ui.RenderLayout(logo, info))
 
 	fmt.Println(ui.RenderLanguageBar(languages, 50))

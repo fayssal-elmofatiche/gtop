@@ -726,6 +726,62 @@ func getDefaultBranch() string {
 	return ""
 }
 
+func GetLicense() string {
+	root, err := runGit("rev-parse", "--show-toplevel")
+	if err != nil {
+		root = "."
+	}
+
+	licenseFiles := []string{"LICENSE", "LICENSE.md", "LICENSE.txt", "LICENCE", "LICENCE.md", "COPYING", "COPYING.md"}
+	for _, name := range licenseFiles {
+		data, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			continue
+		}
+		content := strings.ToLower(string(data))
+		switch {
+		case strings.Contains(content, "mit license") || strings.Contains(content, "permission is hereby granted, free of charge"):
+			return "MIT"
+		case strings.Contains(content, "apache license") && strings.Contains(content, "version 2.0"):
+			return "Apache-2.0"
+		case strings.Contains(content, "gnu general public license") && strings.Contains(content, "version 3"):
+			return "GPL-3.0"
+		case strings.Contains(content, "gnu general public license") && strings.Contains(content, "version 2"):
+			return "GPL-2.0"
+		case strings.Contains(content, "gnu lesser general public license"):
+			return "LGPL"
+		case strings.Contains(content, "bsd 3-clause") || strings.Contains(content, "redistribution and use in source and binary forms"):
+			return "BSD-3-Clause"
+		case strings.Contains(content, "bsd 2-clause"):
+			return "BSD-2-Clause"
+		case strings.Contains(content, "mozilla public license") && strings.Contains(content, "2.0"):
+			return "MPL-2.0"
+		case strings.Contains(content, "unlicense"):
+			return "Unlicense"
+		case strings.Contains(content, "isc license"):
+			return "ISC"
+		default:
+			return "Custom"
+		}
+	}
+	return ""
+}
+
+func GetLatestTag() string {
+	tag, err := runGit("describe", "--tags", "--abbrev=0")
+	if err != nil {
+		return ""
+	}
+	return tag
+}
+
+func CleanURL(raw string) string {
+	u := strings.TrimSuffix(raw, ".git")
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	return u
+}
+
 func GetCommitDates() ([]string, error) {
 	out, err := runGit("log", "--pretty=format:%cd", "--date=short")
 	if err != nil {

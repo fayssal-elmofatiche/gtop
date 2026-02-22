@@ -22,9 +22,9 @@ var (
 )
 
 const logo = `
- ╔═╗ ╔╦╗ ╔═╗ ╔═╗
- ║ ╦  ║  ║ ║ ╠═╝
- ╚═╝  ╩  ╚═╝ ╩  `
+╔═╗ ╔╦╗ ╔═╗ ╔═╗
+║ ╦  ║  ║ ║ ╠═╝
+╚═╝  ╩  ╚═╝ ╩  `
 
 func RenderLogo() string {
 	return borderStyle.Render(logoStyle.Render(logo))
@@ -48,7 +48,7 @@ func formatLOC(loc int) string {
 	}
 }
 
-func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth) string {
+func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth, license string, latestTag string) string {
 	// Build language summary
 	var langParts []string
 	for i, l := range languages {
@@ -74,7 +74,15 @@ func RenderInfo(info git.Info, size string, fileCount int, languages []git.Langu
 	}
 
 	if info.RemoteURL != "" {
-		rows = append(rows, row("URL:", info.RemoteURL))
+		rows = append(rows, row("URL:", git.CleanURL(info.RemoteURL)))
+	}
+
+	if latestTag != "" {
+		rows = append(rows, row("Version:", latestTag))
+	}
+
+	if license != "" {
+		rows = append(rows, row("License:", license))
 	}
 
 	// Velocity

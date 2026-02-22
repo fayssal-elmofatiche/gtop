@@ -9,14 +9,17 @@ import (
 )
 
 var greenLevels = []string{
-	"#2d333b", // 0: no commits (visible gray on dark bg)
+	"#484848", // 0: no commits (visible gray)
 	"#0e4429", // 1: low
 	"#006d32", // 2: medium-low
 	"#26a641", // 3: medium-high
 	"#39d353", // 4: high
 }
 
-const block = "█"
+const (
+	emptyBlock = "░"
+	fullBlock  = "█"
+)
 
 func commitLevel(count, max int) int {
 	if count == 0 || max == 0 {
@@ -36,7 +39,11 @@ func commitLevel(count, max int) int {
 }
 
 func colorBlock(level int) string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(greenLevels[level])).Render(block)
+	ch := fullBlock
+	if level == 0 {
+		ch = emptyBlock
+	}
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(greenLevels[level])).Render(ch)
 }
 
 type heatmapCell struct {
