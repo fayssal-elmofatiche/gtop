@@ -50,7 +50,7 @@ func formatLOC(loc int) string {
 	}
 }
 
-func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, contributors []git.Contributor, loc int, lastActivity string) string {
+func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, contributors []git.Contributor, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth) string {
 	// Build language summary
 	var langParts []string
 	for i, l := range languages {
@@ -86,6 +86,35 @@ func RenderInfo(info git.Info, size string, fileCount int, languages []git.Langu
 
 	if info.RemoteURL != "" {
 		rows = append(rows, row("URL:", info.RemoteURL))
+	}
+
+	// Velocity
+	if velocity.Sparkline != "" {
+		trendStyle := dimStyle
+		if velocity.Trend == "↑" {
+			trendStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950"))
+		} else if velocity.Trend == "↓" {
+			trendStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F85149"))
+		}
+		rows = append(rows, row("Velocity:", fmt.Sprintf("%.1f/wk %s %s", velocity.PerWeek, velocity.Sparkline, trendStyle.Render(velocity.Trend))))
+	}
+
+	// Dependencies
+	if depCount > 0 {
+		rows = append(rows, row("Deps:", fmt.Sprintf("%d %s", depCount, dimStyle.Render("("+depManager+")"))))
+	}
+
+	// Branch health
+	if health.TotalBranches > 0 {
+		branchStr := fmt.Sprintf("%d", health.TotalBranches)
+		if health.StaleBranches > 0 {
+			staleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F85149"))
+			branchStr += fmt.Sprintf(" %s", staleStyle.Render(fmt.Sprintf("(%d stale)", health.StaleBranches)))
+		}
+		if health.AheadBehind != "" {
+			branchStr += " " + dimStyle.Render(health.AheadBehind)
+		}
+		rows = append(rows, row("Branches:", branchStr))
 	}
 
 	statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950"))
@@ -140,6 +169,30 @@ func RenderLanguageBar(languages []git.LanguageStat, width int) string {
 	}
 
 	return fmt.Sprintf("\n%s\n%s", bar.String(), legend.String())
+}
+
+func RenderHotFiles(files []git.HotFile) string {
+	if len(files) == 0 {
+		return ""
+	}
+
+	header := titleStyle.Render("Hot Files") + dimStyle.Render(" (90 days)")
+	var lines []string
+	lines = append(lines, header)
+
+	maxChanges := files[0].Changes
+	barMax := 20
+
+	for _, f := range files {
+		w := int(float64(f.Changes) / float64(maxChanges) * float64(barMax))
+		if w < 1 {
+			w = 1
+		}
+		bar := lipgloss.NewStyle().Foreground(lipgloss.Color("#F0883E")).Render(strings.Repeat("█", w))
+		count := dimStyle.Render(fmt.Sprintf("%3d", f.Changes))
+		lines = append(lines, fmt.Sprintf("  %s %s %s", count, bar, valueStyle.Render(f.Path)))
+	}
+	return "\n" + strings.Join(lines, "\n")
 }
 
 func RenderLayout(logoBlock, info string) string {

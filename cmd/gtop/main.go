@@ -20,12 +20,20 @@ func main() {
 	contributors := git.GetContributors(3)
 	loc := git.GetLinesOfCode()
 	lastActivity := git.GetLastActivity()
+	velocity := git.GetVelocity()
+	depManager, depCount := git.GetDependencyCount()
+	health := git.GetBranchHealth()
+	hotFiles := git.GetHotFiles(5)
 
 	logo := ui.RenderLogo()
-	info := ui.RenderInfo(gitInfo, size, fileCount, languages, contributors, loc, lastActivity)
+	info := ui.RenderInfo(gitInfo, size, fileCount, languages, contributors, loc, lastActivity, velocity, depManager, depCount, health)
 	fmt.Println(ui.RenderLayout(logo, info))
 
 	fmt.Println(ui.RenderLanguageBar(languages, 50))
+
+	if len(hotFiles) > 0 {
+		fmt.Println(ui.RenderHotFiles(hotFiles))
+	}
 
 	dates, _ := git.GetCommitDates()
 	if len(dates) > 0 {

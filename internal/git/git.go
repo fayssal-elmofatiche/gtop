@@ -34,6 +34,23 @@ type Contributor struct {
 	Commits int
 }
 
+type HotFile struct {
+	Path    string
+	Changes int
+}
+
+type BranchHealth struct {
+	TotalBranches int
+	StaleBranches int // >30 days without commits
+	AheadBehind   string
+}
+
+type Velocity struct {
+	PerWeek   float64
+	Sparkline string
+	Trend     string // "↑", "↓", "→"
+}
+
 func runGit(args ...string) (string, error) {
 	out, err := exec.Command("git", args...).Output()
 	if err != nil {
@@ -72,20 +89,32 @@ func GetInfo() (Info, error) {
 
 func extractRepoName(remoteURL string) string {
 	if remoteURL == "" {
-		// Fall back to directory name
 		if dir, err := os.Getwd(); err == nil {
 			return filepath.Base(dir)
 		}
 		return "unknown"
 	}
-	// Handle https://github.com/owner/repo.git
 	u := strings.TrimSuffix(remoteURL, ".git")
-	if idx := strings.Index(u, "github.com"); idx >= 0 {
-		return strings.TrimPrefix(u[idx:], "github.com/")
+
+	// Handle git@host:owner/repo
+	if strings.HasPrefix(u, "git@") {
+		if idx := strings.Index(u, ":"); idx >= 0 {
+			return u[idx+1:]
+		}
 	}
-	// Handle git@host:owner/repo.git
-	if idx := strings.LastIndex(u, ":"); idx >= 0 {
-		return u[idx+1:]
+
+	// Handle any https URL — extract last two path segments (owner/repo)
+	// Works for github.com, gitlab.com, bitbucket.org, self-hosted, etc.
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	parts := strings.Split(u, "/")
+	if len(parts) >= 3 {
+		// For Bitbucket SCM URLs like host/bitbucket/scm/project/repo
+		// or standard host/owner/repo
+		return parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	}
+	if len(parts) == 2 {
+		return parts[1]
 	}
 	return u
 }
@@ -372,6 +401,298 @@ func GetLastActivity() string {
 		return "unknown"
 	}
 	return timeAgo(t)
+}
+
+func GetHotFiles(max int) []HotFile {
+	// Most frequently changed files in the last 90 days
+	out, err := runGit("log", "--since=90 days ago", "--pretty=format:", "--name-only")
+	if err != nil {
+		return nil
+	}
+
+	counts := make(map[string]int)
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		counts[line]++
+	}
+
+	type kv struct {
+		path  string
+		count int
+	}
+	var sorted []kv
+	for p, c := range counts {
+		sorted = append(sorted, kv{p, c})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].count > sorted[j].count
+	})
+
+	var result []HotFile
+	for i, item := range sorted {
+		if i >= max {
+			break
+		}
+		result = append(result, HotFile{Path: item.path, Changes: item.count})
+	}
+	return result
+}
+
+func GetVelocity() Velocity {
+	// Get weekly commit counts for the last 8 weeks
+	var weeklyCounts []int
+	now := time.Now()
+	for i := 7; i >= 0; i-- {
+		weekEnd := now.AddDate(0, 0, -7*i)
+		weekStart := weekEnd.AddDate(0, 0, -7)
+		out, err := runGit("rev-list", "--count", "--since="+weekStart.Format("2006-01-02"), "--until="+weekEnd.Format("2006-01-02"), "HEAD")
+		if err != nil {
+			weeklyCounts = append(weeklyCounts, 0)
+			continue
+		}
+		count := 0
+		fmt.Sscanf(out, "%d", &count)
+		weeklyCounts = append(weeklyCounts, count)
+	}
+
+	// Calculate average
+	total := 0
+	for _, c := range weeklyCounts {
+		total += c
+	}
+	avg := float64(total) / float64(len(weeklyCounts))
+
+	// Build sparkline
+	sparkChars := []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
+	maxCount := 0
+	for _, c := range weeklyCounts {
+		if c > maxCount {
+			maxCount = c
+		}
+	}
+	var spark strings.Builder
+	for _, c := range weeklyCounts {
+		idx := 0
+		if maxCount > 0 {
+			idx = int(float64(c) / float64(maxCount) * 7)
+			if idx > 7 {
+				idx = 7
+			}
+		}
+		spark.WriteRune(sparkChars[idx])
+	}
+
+	// Trend: compare last 4 weeks vs first 4 weeks
+	trend := "→"
+	if len(weeklyCounts) == 8 {
+		firstHalf := 0
+		secondHalf := 0
+		for i := 0; i < 4; i++ {
+			firstHalf += weeklyCounts[i]
+			secondHalf += weeklyCounts[i+4]
+		}
+		if secondHalf > firstHalf+2 {
+			trend = "↑"
+		} else if firstHalf > secondHalf+2 {
+			trend = "↓"
+		}
+	}
+
+	return Velocity{PerWeek: avg, Sparkline: spark.String(), Trend: trend}
+}
+
+func GetDependencyCount() (string, int) {
+	// Detect package manager and count dependencies
+	depFiles := map[string]struct {
+		manager string
+		counter func(string) int
+	}{
+		"go.mod":           {"Go modules", countGoMod},
+		"package.json":     {"npm", countPackageJSON},
+		"requirements.txt": {"pip", countLines},
+		"Pipfile":          {"pipenv", countLines},
+		"Cargo.toml":       {"Cargo", countCargoToml},
+		"Gemfile":          {"Bundler", countLines},
+		"composer.json":    {"Composer", countComposerJSON},
+		"pyproject.toml":   {"pyproject", countPyprojectToml},
+	}
+
+	for file, info := range depFiles {
+		if data, err := os.ReadFile(file); err == nil {
+			count := info.counter(string(data))
+			if count > 0 {
+				return info.manager, count
+			}
+		}
+	}
+	return "", 0
+}
+
+func countGoMod(content string) int {
+	count := 0
+	inRequire := false
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "require (" {
+			inRequire = true
+			continue
+		}
+		if line == ")" {
+			inRequire = false
+			continue
+		}
+		if inRequire && line != "" && !strings.HasPrefix(line, "//") {
+			count++
+		}
+	}
+	return count
+}
+
+func countPackageJSON(content string) int {
+	// Simple count of lines in "dependencies" and "devDependencies" blocks
+	count := 0
+	inDeps := false
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, `"dependencies"`) || strings.Contains(trimmed, `"devDependencies"`) {
+			inDeps = true
+			continue
+		}
+		if inDeps && strings.HasPrefix(trimmed, "}") {
+			inDeps = false
+			continue
+		}
+		if inDeps && strings.Contains(trimmed, `"`) {
+			count++
+		}
+	}
+	return count
+}
+
+func countLines(content string) int {
+	count := 0
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") {
+			count++
+		}
+	}
+	return count
+}
+
+func countCargoToml(content string) int {
+	count := 0
+	inDeps := false
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "[dependencies]") || strings.Contains(trimmed, "[dev-dependencies]") {
+			inDeps = true
+			continue
+		}
+		if strings.HasPrefix(trimmed, "[") {
+			inDeps = false
+			continue
+		}
+		if inDeps && trimmed != "" && !strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, "=") {
+			count++
+		}
+	}
+	return count
+}
+
+func countComposerJSON(content string) int {
+	return countPackageJSON(content) // same structure
+}
+
+func countPyprojectToml(content string) int {
+	count := 0
+	inDeps := false
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "dependencies") && strings.Contains(trimmed, "[") {
+			inDeps = true
+			continue
+		}
+		if inDeps && strings.HasPrefix(trimmed, "]") {
+			inDeps = false
+			continue
+		}
+		if inDeps && strings.HasPrefix(trimmed, `"`) {
+			count++
+		}
+	}
+	return count
+}
+
+func GetBranchHealth() BranchHealth {
+	var health BranchHealth
+
+	// Total branches
+	out, err := runGit("branch", "-a")
+	if err != nil {
+		return health
+	}
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.Contains(line, "->") {
+			health.TotalBranches++
+		}
+	}
+
+	// Stale branches (local branches with no commits in 30+ days)
+	out, err = runGit("branch", "--format=%(refname:short) %(committerdate:iso)")
+	if err == nil {
+		thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+		for _, line := range strings.Split(out, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, " ", 2)
+			if len(parts) < 2 {
+				continue
+			}
+			dateStr := strings.TrimSpace(parts[1])
+			if t, err := time.Parse("2006-01-02 15:04:05 -0700", dateStr); err == nil {
+				if t.Before(thirtyDaysAgo) {
+					health.StaleBranches++
+				}
+			}
+		}
+	}
+
+	// Ahead/behind default branch
+	defaultBranch := getDefaultBranch()
+	currentBranch, _ := runGit("rev-parse", "--abbrev-ref", "HEAD")
+	if defaultBranch != "" && currentBranch != defaultBranch {
+		out, err = runGit("rev-list", "--left-right", "--count", defaultBranch+"...HEAD")
+		if err == nil {
+			parts := strings.Fields(out)
+			if len(parts) == 2 {
+				health.AheadBehind = fmt.Sprintf("↑%s ↓%s vs %s", parts[1], parts[0], defaultBranch)
+			}
+		}
+	}
+
+	return health
+}
+
+func getDefaultBranch() string {
+	// Try origin/HEAD first
+	out, err := runGit("symbolic-ref", "refs/remotes/origin/HEAD")
+	if err == nil {
+		return strings.TrimPrefix(out, "refs/remotes/origin/")
+	}
+	// Fallback: check if main or master exists
+	for _, branch := range []string{"main", "master"} {
+		if _, err := runGit("rev-parse", "--verify", branch); err == nil {
+			return branch
+		}
+	}
+	return ""
 }
 
 func GetCommitDates() ([]string, error) {
