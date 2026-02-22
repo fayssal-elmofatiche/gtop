@@ -22,11 +22,9 @@ var (
 )
 
 const logo = `
-   ____ _____ ___  ____
-  / ___|_   _/ _ \|  _ \
- | |  _  | || | | | |_) |
- | |_| | | || |_| |  __/
-  \____| |_| \___/|_|`
+ ╔═╗ ╔╦╗ ╔═╗ ╔═╗
+ ║ ╦  ║  ║ ║ ╠═╝
+ ╚═╝  ╩  ╚═╝ ╩  `
 
 func RenderLogo() string {
 	return borderStyle.Render(logoStyle.Render(logo))

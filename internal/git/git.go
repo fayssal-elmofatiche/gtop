@@ -403,6 +403,29 @@ func GetLastActivity() string {
 	return timeAgo(t)
 }
 
+var generatedFiles = map[string]bool{
+	"Cargo.lock":        true,
+	"package-lock.json": true,
+	"yarn.lock":         true,
+	"pnpm-lock.yaml":   true,
+	"go.sum":            true,
+	"Gemfile.lock":      true,
+	"composer.lock":     true,
+	"Pipfile.lock":      true,
+	"poetry.lock":       true,
+}
+
+func isGenerated(path string) bool {
+	base := filepath.Base(path)
+	if generatedFiles[base] {
+		return true
+	}
+	if strings.HasSuffix(base, "-hashes.json") || strings.HasSuffix(base, ".min.js") || strings.HasSuffix(base, ".min.css") {
+		return true
+	}
+	return false
+}
+
 func GetHotFiles(max int) []HotFile {
 	// Most frequently changed files in the last 90 days
 	out, err := runGit("log", "--since=90 days ago", "--pretty=format:", "--name-only")
@@ -413,7 +436,7 @@ func GetHotFiles(max int) []HotFile {
 	counts := make(map[string]int)
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" {
+		if line == "" || isGenerated(line) {
 			continue
 		}
 		counts[line]++
@@ -505,26 +528,34 @@ func GetVelocity() Velocity {
 }
 
 func GetDependencyCount() (string, int) {
+	// Find repo root so we look for dep files in the right place
+	root, err := runGit("rev-parse", "--show-toplevel")
+	if err != nil {
+		root = "."
+	}
+
 	// Detect package manager and count dependencies
-	depFiles := map[string]struct {
+	depFiles := []struct {
+		file    string
 		manager string
 		counter func(string) int
 	}{
-		"go.mod":           {"Go modules", countGoMod},
-		"package.json":     {"npm", countPackageJSON},
-		"requirements.txt": {"pip", countLines},
-		"Pipfile":          {"pipenv", countLines},
-		"Cargo.toml":       {"Cargo", countCargoToml},
-		"Gemfile":          {"Bundler", countLines},
-		"composer.json":    {"Composer", countComposerJSON},
-		"pyproject.toml":   {"pyproject", countPyprojectToml},
+		{"go.mod", "Go modules", countGoMod},
+		{"package.json", "npm", countPackageJSON},
+		{"requirements.txt", "pip", countLines},
+		{"Pipfile", "pipenv", countLines},
+		{"Cargo.toml", "Cargo", countCargoToml},
+		{"Gemfile", "Bundler", countLines},
+		{"composer.json", "Composer", countComposerJSON},
+		{"pyproject.toml", "pyproject", countPyprojectToml},
 	}
 
-	for file, info := range depFiles {
-		if data, err := os.ReadFile(file); err == nil {
-			count := info.counter(string(data))
+	for _, dep := range depFiles {
+		path := filepath.Join(root, dep.file)
+		if data, err := os.ReadFile(path); err == nil {
+			count := dep.counter(string(data))
 			if count > 0 {
-				return info.manager, count
+				return dep.manager, count
 			}
 		}
 	}
