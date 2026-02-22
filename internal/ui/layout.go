@@ -13,21 +13,12 @@ var (
 	labelStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#6CB6FF")).Width(14)
 	valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#E6EDF3"))
 	dimStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#8B949E"))
-	logoStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F0883E"))
-	borderStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#F0883E")).
-			Padding(0, 2)
 	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F0883E"))
 )
 
-const logo = `
-╔═╗ ╔╦╗ ╔═╗ ╔═╗
-║ ╦  ║  ║ ║ ╠═╝
-╚═╝  ╩  ╚═╝ ╩  `
-
-func RenderLogo() string {
-	return borderStyle.Render(logoStyle.Render(logo))
+func RenderLogo(language string) string {
+	logo := getLanguageLogo(language)
+	return renderColoredArt(logo.art, logo.colors)
 }
 
 func row(label, value string) string {

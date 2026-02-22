@@ -127,7 +127,11 @@ func main() {
 
 	wg.Wait()
 
-	logo := ui.RenderLogo()
+	primaryLang := ""
+	if len(languages) > 0 {
+		primaryLang = languages[0].Name
+	}
+	logo := ui.RenderLogo(primaryLang)
 	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health, license, latestTag)
 	fmt.Println(ui.RenderLayout(logo, info))
 
