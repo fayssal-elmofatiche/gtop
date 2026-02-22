@@ -1,0 +1,38 @@
+version: 2
+
+builds:
+  - main: ./cmd/gtop
+    binary: gtop
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+brews:
+  - repository:
+      owner: fayssal-elmofatiche
+      name: homebrew-tap
+    homepage: https://github.com/fayssal-elmofatiche/gtop
+    description: A fast, terminal-based git repository info tool
+    license: MIT
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

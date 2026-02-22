@@ -19,13 +19,23 @@ Built in Go with [lipgloss](https://github.com/charmbracelet/lipgloss) for style
 
 ## Install
 
-### From source (requires Go 1.23+)
+### Homebrew (macOS/Linux)
+
+```bash
+brew install fayssal-elmofatiche/tap/gtop
+```
+
+### Go install (requires Go 1.23+)
 
 ```bash
 go install github.com/fayssal-elmofatiche/gtop/cmd/gtop@latest
 ```
 
-### Build locally
+### Download binary
+
+Pre-built binaries for Linux, macOS, and Windows are available on the [Releases](https://github.com/fayssal-elmofatiche/gtop/releases) page.
+
+### Build from source
 
 ```bash
 git clone https://github.com/fayssal-elmofatiche/gtop.git
@@ -53,7 +63,6 @@ No flags, no config. Just run `gtop` inside a git repository.
 │   | |_| | | || |_| |  __/   │   Languages:    Go 85.2%, Shell 14.8%
 │    \____| |_| \___/|_|      │   Size:         48.3 KB (12 files)
 ╰─────────────────────────────╯   Lines:        1.2K
-                                  Authors:      Alice (98), Bob (44)
                                   URL:          github.com/owner/repo.git
                                   Velocity:     2.4/wk ▂▃▅▇█▆▃▄ ↑
                                   Deps:         12 (Go modules)
@@ -63,12 +72,15 @@ No flags, no config. Just run `gtop` inside a git repository.
 ██████████████████████████████████████████████████
 ● Go 85.2%  ● Shell 14.8%
 
+Top Authors
+    98 ████████████████████ Alice
+    44 ████████             Bob
+    12 ██                   Charlie
+
 Hot Files (90 days)
    18 ████████████████████ internal/git/git.go
    12 █████████████        cmd/gtop/main.go
     7 ███████              internal/ui/layout.go
-    3 ███                  go.mod
-    2 ██                   README.md
 
 Commit Activity (past year)
      Mar     Apr     May     Jun     Jul     Aug     ...

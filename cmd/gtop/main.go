@@ -8,7 +8,14 @@ import (
 	"github.com/fayssal-elmofatiche/gtop/internal/ui"
 )
 
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Println("gtop", version)
+		return
+	}
+
 	gitInfo, err := git.GetInfo()
 	if err != nil {
 		fmt.Println("Not a git repository")
