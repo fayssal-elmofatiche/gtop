@@ -39,7 +39,7 @@ func formatLOC(loc int) string {
 	}
 }
 
-func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth, license string, latestTag string) string {
+func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth, license string, latestTag string, cicd []string, stashCount int, testRatio git.TestRatio, commitConvention string) string {
 	// Build language summary
 	var langParts []string
 	for i, l := range languages {
@@ -103,6 +103,28 @@ func RenderInfo(info git.Info, size string, fileCount int, languages []git.Langu
 			branchStr += " " + dimStyle.Render(health.AheadBehind)
 		}
 		rows = append(rows, row("Branches:", branchStr))
+	}
+
+	// CI/CD
+	if len(cicd) > 0 {
+		rows = append(rows, row("CI/CD:", strings.Join(cicd, ", ")))
+	}
+
+	// Test ratio
+	if testRatio.TestLines > 0 {
+		ratioStr := fmt.Sprintf("%.0f%% %s", testRatio.Ratio*100, dimStyle.Render(fmt.Sprintf("(%s test / %s code)", formatLOC(testRatio.TestLines), formatLOC(testRatio.CodeLines))))
+		rows = append(rows, row("Tests:", ratioStr))
+	}
+
+	// Commit convention
+	if commitConvention != "" {
+		rows = append(rows, row("Commits:", commitConvention))
+	}
+
+	// Stash
+	if stashCount > 0 {
+		stashStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#D2A8FF"))
+		rows = append(rows, row("Stash:", stashStyle.Render(fmt.Sprintf("%d entries", stashCount))))
 	}
 
 	statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950"))
@@ -203,6 +225,22 @@ func RenderHotFiles(files []git.HotFile) string {
 		bar := lipgloss.NewStyle().Foreground(lipgloss.Color("#F0883E")).Render(strings.Repeat("█", w))
 		count := dimStyle.Render(fmt.Sprintf("%3d", f.Changes))
 		lines = append(lines, fmt.Sprintf("  %s %s %s", count, bar, valueStyle.Render(f.Path)))
+	}
+	return "\n" + strings.Join(lines, "\n")
+}
+
+func RenderReleases(releases []git.Release) string {
+	if len(releases) == 0 {
+		return ""
+	}
+
+	header := titleStyle.Render("Releases")
+	var lines []string
+	lines = append(lines, header)
+
+	for _, r := range releases {
+		tagStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950")).Bold(true)
+		lines = append(lines, fmt.Sprintf("  %s %s", tagStyle.Render(r.Tag), dimStyle.Render(r.Age)))
 	}
 	return "\n" + strings.Join(lines, "\n")
 }

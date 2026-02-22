@@ -35,20 +35,25 @@ func main() {
 	}
 
 	var (
-		languages    []git.LanguageStat
-		size         string
-		fileCount    int
-		contributors []git.Contributor
-		loc          int
-		lastActivity string
-		velocity     git.Velocity
-		depManager   string
-		depCount     int
-		health       git.BranchHealth
-		hotFiles     []git.HotFile
-		dates        []string
-		license      string
-		latestTag    string
+		languages        []git.LanguageStat
+		size             string
+		fileCount        int
+		contributors     []git.Contributor
+		loc              int
+		lastActivity     string
+		velocity         git.Velocity
+		depManager       string
+		depCount         int
+		health           git.BranchHealth
+		hotFiles         []git.HotFile
+		dates            []string
+		license          string
+		latestTag        string
+		cicd             []string
+		releases         []git.Release
+		stashCount       int
+		testRatio        git.TestRatio
+		commitConvention string
 	)
 
 	var wg sync.WaitGroup
@@ -125,6 +130,36 @@ func main() {
 		latestTag = git.GetLatestTag()
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		cicd = git.GetCICD()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		releases = git.GetRecentReleases(5)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		stashCount = git.GetStashCount()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		testRatio = git.GetTestRatio()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		commitConvention = git.GetCommitConvention()
+	}()
+
 	wg.Wait()
 
 	primaryLang := ""
@@ -132,7 +167,7 @@ func main() {
 		primaryLang = languages[0].Name
 	}
 	logo := ui.RenderLogo(primaryLang)
-	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health, license, latestTag)
+	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health, license, latestTag, cicd, stashCount, testRatio, commitConvention)
 	fmt.Println(ui.RenderLayout(logo, info))
 
 	fmt.Println(ui.RenderLanguageBar(languages, 50))
@@ -143,6 +178,10 @@ func main() {
 
 	if len(hotFiles) > 0 {
 		fmt.Println(ui.RenderHotFiles(hotFiles))
+	}
+
+	if len(releases) > 0 {
+		fmt.Println(ui.RenderReleases(releases))
 	}
 
 	if len(dates) > 0 {

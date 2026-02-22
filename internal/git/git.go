@@ -51,6 +51,18 @@ type Velocity struct {
 	Trend     string // "↑", "↓", "→"
 }
 
+type Release struct {
+	Tag  string
+	Date string
+	Age  string
+}
+
+type TestRatio struct {
+	CodeLines int
+	TestLines int
+	Ratio     float64 // test lines / code lines
+}
+
 func runGit(args ...string) (string, error) {
 	out, err := exec.Command("git", args...).Output()
 	if err != nil {
@@ -796,4 +808,204 @@ func GetCommitDates() ([]string, error) {
 		}
 	}
 	return dates, nil
+}
+
+// GetCICD detects CI/CD configuration files in the repo
+func GetCICD() []string {
+	root, err := runGit("rev-parse", "--show-toplevel")
+	if err != nil {
+		root = "."
+	}
+
+	ciSystems := []struct {
+		path string
+		name string
+	}{
+		{".github/workflows", "GitHub Actions"},
+		{".gitlab-ci.yml", "GitLab CI"},
+		{"Jenkinsfile", "Jenkins"},
+		{".circleci", "CircleCI"},
+		{".travis.yml", "Travis CI"},
+		{"azure-pipelines.yml", "Azure Pipelines"},
+		{".drone.yml", "Drone"},
+		{"bitbucket-pipelines.yml", "Bitbucket Pipelines"},
+		{".buildkite", "Buildkite"},
+		{"Taskfile.yml", "Task"},
+		{"Makefile", "Make"},
+		{".goreleaser.yml", "GoReleaser"},
+		{".goreleaser.yaml", "GoReleaser"},
+		{"Dockerfile", "Docker"},
+		{"docker-compose.yml", "Docker Compose"},
+		{"docker-compose.yaml", "Docker Compose"},
+	}
+
+	seen := make(map[string]bool)
+	var detected []string
+	for _, ci := range ciSystems {
+		path := filepath.Join(root, ci.path)
+		if info, err := os.Stat(path); err == nil {
+			if !seen[ci.name] {
+				seen[ci.name] = true
+				_ = info
+				detected = append(detected, ci.name)
+			}
+		}
+	}
+	return detected
+}
+
+// GetRecentReleases returns the last N tags with their dates
+func GetRecentReleases(max int) []Release {
+	// Get tags sorted by creation date (newest first)
+	out, err := runGit("tag", "--sort=-creatordate", "--format=%(refname:short) %(creatordate:short)")
+	if err != nil {
+		return nil
+	}
+
+	var releases []Release
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 2)
+		tag := parts[0]
+		date := ""
+		age := ""
+		if len(parts) >= 2 {
+			date = parts[1]
+			if t, err := time.Parse("2006-01-02", date); err == nil {
+				age = timeAgo(t)
+			}
+		}
+		releases = append(releases, Release{Tag: tag, Date: date, Age: age})
+		if len(releases) >= max {
+			break
+		}
+	}
+	return releases
+}
+
+// GetStashCount returns the number of stashed changes
+func GetStashCount() int {
+	out, err := runGit("stash", "list")
+	if err != nil || out == "" {
+		return 0
+	}
+	return len(strings.Split(out, "\n"))
+}
+
+// GetTestRatio counts code vs test lines
+func GetTestRatio() TestRatio {
+	out, err := runGit("ls-files")
+	if err != nil {
+		return TestRatio{}
+	}
+
+	var codeLines, testLines int
+	for _, file := range strings.Split(out, "\n") {
+		if file == "" {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(file))
+		if _, ok := extToLang[ext]; !ok {
+			continue
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		lines := strings.Count(string(data), "\n")
+		if len(data) > 0 && data[len(data)-1] != '\n' {
+			lines++
+		}
+
+		base := strings.ToLower(filepath.Base(file))
+		dir := strings.ToLower(filepath.Dir(file))
+		isTest := strings.Contains(base, "_test.") ||
+			strings.Contains(base, ".test.") ||
+			strings.Contains(base, ".spec.") ||
+			strings.Contains(base, "test_") ||
+			strings.HasPrefix(base, "test_") ||
+			strings.Contains(dir, "/test/") ||
+			strings.Contains(dir, "/tests/") ||
+			strings.Contains(dir, "/__tests__/") ||
+			strings.HasPrefix(dir, "test/") ||
+			strings.HasPrefix(dir, "tests/")
+
+		if isTest {
+			testLines += lines
+		} else {
+			codeLines += lines
+		}
+	}
+
+	ratio := 0.0
+	if codeLines > 0 {
+		ratio = float64(testLines) / float64(codeLines)
+	}
+	return TestRatio{CodeLines: codeLines, TestLines: testLines, Ratio: ratio}
+}
+
+// GetCommitConvention analyzes recent commits to detect convention style
+func GetCommitConvention() string {
+	out, err := runGit("log", "--oneline", "-50", "--pretty=%s")
+	if err != nil || out == "" {
+		return ""
+	}
+
+	lines := strings.Split(out, "\n")
+	conventional := 0 // feat:, fix:, chore:, etc.
+	gitmoji := 0      // starts with emoji
+	angular := 0      // type(scope): msg
+
+	conventionalPrefixes := []string{
+		"feat:", "fix:", "chore:", "docs:", "style:", "refactor:",
+		"perf:", "test:", "build:", "ci:", "revert:",
+		"feat(", "fix(", "chore(", "docs(", "style(", "refactor(",
+		"perf(", "test(", "build(", "ci(", "revert(",
+	}
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		lower := strings.ToLower(line)
+
+		// Check conventional commits
+		for _, prefix := range conventionalPrefixes {
+			if strings.HasPrefix(lower, prefix) {
+				conventional++
+				if strings.Contains(prefix, "(") {
+					angular++
+				}
+				break
+			}
+		}
+
+		// Check gitmoji (starts with emoji - check first rune)
+		runes := []rune(line)
+		if len(runes) > 0 && runes[0] > 127 {
+			gitmoji++
+		}
+	}
+
+	total := len(lines)
+	if total == 0 {
+		return ""
+	}
+
+	// If >40% match a pattern, declare it
+	if float64(conventional)/float64(total) > 0.4 {
+		if float64(angular)/float64(total) > 0.3 {
+			return "Conventional (scoped)"
+		}
+		return "Conventional Commits"
+	}
+	if float64(gitmoji)/float64(total) > 0.4 {
+		return "Gitmoji"
+	}
+	return "Freeform"
 }
