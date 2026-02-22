@@ -24,3 +24,9 @@ vendor/
 .vscode/
 *.swp
 *.swo
+
+# Claude Code
+.claude/
+
+# goreleaser
+dist/
