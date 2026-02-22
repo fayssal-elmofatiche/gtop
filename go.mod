@@ -1,4 +1,4 @@
-module github.com/fayssalelmofatiche/gtop
+module github.com/fayssal-elmofatiche/gtop
 
 go 1.23.4
 

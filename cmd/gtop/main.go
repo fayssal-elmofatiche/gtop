@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fayssalelmofatiche/gtop/internal/git"
-	"github.com/fayssalelmofatiche/gtop/internal/ui"
+	"github.com/fayssal-elmofatiche/gtop/internal/git"
+	"github.com/fayssal-elmofatiche/gtop/internal/ui"
 )
 
 func main() {
