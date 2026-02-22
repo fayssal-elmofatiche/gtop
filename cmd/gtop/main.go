@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/fayssal-elmofatiche/gtop/internal/git"
 	"github.com/fayssal-elmofatiche/gtop/internal/ui"
@@ -10,9 +11,19 @@ import (
 
 var version = "dev"
 
+func getVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return version
+}
+
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
-		fmt.Println("gtop", version)
+		fmt.Println("gtop", getVersion())
 		return
 	}
 
