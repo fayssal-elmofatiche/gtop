@@ -50,7 +50,7 @@ func formatLOC(loc int) string {
 	}
 }
 
-func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, contributors []git.Contributor, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth) string {
+func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth) string {
 	// Build language summary
 	var langParts []string
 	for i, l := range languages {
@@ -73,15 +73,6 @@ func RenderInfo(info git.Info, size string, fileCount int, languages []git.Langu
 		row("Languages:", langSummary),
 		row("Size:", fmt.Sprintf("%s %s", size, dimStyle.Render(fmt.Sprintf("(%d files)", fileCount)))),
 		row("Lines:", formatLOC(loc)),
-	}
-
-	// Contributors
-	if len(contributors) > 0 {
-		var contribParts []string
-		for _, c := range contributors {
-			contribParts = append(contribParts, fmt.Sprintf("%s %s", c.Name, dimStyle.Render(fmt.Sprintf("(%d)", c.Commits))))
-		}
-		rows = append(rows, row("Authors:", strings.Join(contribParts, ", ")))
 	}
 
 	if info.RemoteURL != "" {
@@ -169,6 +160,30 @@ func RenderLanguageBar(languages []git.LanguageStat, width int) string {
 	}
 
 	return fmt.Sprintf("\n%s\n%s", bar.String(), legend.String())
+}
+
+func RenderContributors(contributors []git.Contributor) string {
+	if len(contributors) == 0 {
+		return ""
+	}
+
+	header := titleStyle.Render("Top Authors")
+	var lines []string
+	lines = append(lines, header)
+
+	maxCommits := contributors[0].Commits
+	barMax := 20
+
+	for _, c := range contributors {
+		w := int(float64(c.Commits) / float64(maxCommits) * float64(barMax))
+		if w < 1 {
+			w = 1
+		}
+		bar := lipgloss.NewStyle().Foreground(lipgloss.Color("#6CB6FF")).Render(strings.Repeat("█", w))
+		count := dimStyle.Render(fmt.Sprintf("%5d", c.Commits))
+		lines = append(lines, fmt.Sprintf("  %s %s %s", count, bar, valueStyle.Render(c.Name)))
+	}
+	return "\n" + strings.Join(lines, "\n")
 }
 
 func RenderHotFiles(files []git.HotFile) string {

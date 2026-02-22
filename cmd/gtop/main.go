@@ -17,7 +17,7 @@ func main() {
 
 	languages := git.GetLanguageStats()
 	size, fileCount := git.GetRepoSize()
-	contributors := git.GetContributors(3)
+	contributors := git.GetContributors(5)
 	loc := git.GetLinesOfCode()
 	lastActivity := git.GetLastActivity()
 	velocity := git.GetVelocity()
@@ -26,10 +26,14 @@ func main() {
 	hotFiles := git.GetHotFiles(5)
 
 	logo := ui.RenderLogo()
-	info := ui.RenderInfo(gitInfo, size, fileCount, languages, contributors, loc, lastActivity, velocity, depManager, depCount, health)
+	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health)
 	fmt.Println(ui.RenderLayout(logo, info))
 
 	fmt.Println(ui.RenderLanguageBar(languages, 50))
+
+	if len(contributors) > 0 {
+		fmt.Println(ui.RenderContributors(contributors))
+	}
 
 	if len(hotFiles) > 0 {
 		fmt.Println(ui.RenderHotFiles(hotFiles))
