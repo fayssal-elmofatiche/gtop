@@ -141,6 +141,11 @@ Go, Python, JavaScript, TypeScript, Rust, Java, C, C++, C#, Ruby, PHP, Swift, Ko
 - Works on any terminal that supports ANSI colors (most modern terminals)
 - Colors are automatically disabled when output is piped
 
+## Acknowledgements
+
+- **[onefetch](https://github.com/o2sh/onefetch)** — ASCII art language logos are adapted from onefetch's collection (MIT license). onefetch is a fantastic command-line git information tool written in Rust.
+- **[neofetch](https://github.com/dylanaraps/neofetch)** — Inspiration for the side-by-side logo + info layout and the one-shot display approach.
+
 ## License
 
 MIT
