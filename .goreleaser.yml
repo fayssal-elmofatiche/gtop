@@ -1,8 +1,8 @@
 version: 2
 
 builds:
-  - main: ./cmd/gtop
-    binary: gtop
+  - main: ./cmd/gfetch
+    binary: gfetch
     ldflags:
       - -s -w -X main.version={{.Version}}
     env:
@@ -27,7 +27,7 @@ brews:
       owner: fayssal-elmofatiche
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: https://github.com/fayssal-elmofatiche/gtop
+    homepage: https://github.com/fayssal-elmofatiche/gfetch
     description: A fast, terminal-based git repository info tool
     license: MIT
 

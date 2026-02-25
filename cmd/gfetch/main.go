@@ -6,8 +6,8 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/fayssal-elmofatiche/gtop/internal/git"
-	"github.com/fayssal-elmofatiche/gtop/internal/ui"
+	"github.com/fayssal-elmofatiche/gfetch/internal/git"
+	"github.com/fayssal-elmofatiche/gfetch/internal/ui"
 )
 
 var version = "dev"
@@ -24,7 +24,7 @@ func getVersion() string {
 
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
-		fmt.Println("gtop", getVersion())
+		fmt.Println("gfetch", getVersion())
 		return
 	}
 

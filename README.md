@@ -1,4 +1,4 @@
-# gtop
+# gfetch
 
 A fast, zero-config, terminal-based git repository information tool. Think [onefetch](https://github.com/o2sh/onefetch) meets [neofetch](https://github.com/dylanaraps/neofetch) — displays a rich summary of any git repo at a glance.
 
@@ -28,71 +28,71 @@ A fast, zero-config, terminal-based git repository information tool. Think [onef
 ### Homebrew (macOS/Linux)
 
 ```bash
-brew install fayssal-elmofatiche/tap/gtop
+brew install fayssal-elmofatiche/tap/gfetch
 ```
 
 ### Windows
 
-Download the latest `.zip` from [Releases](https://github.com/fayssal-elmofatiche/gtop/releases), extract it, and add `gtop.exe` to your `PATH`. Or with Go installed:
+Download the latest `.zip` from [Releases](https://github.com/fayssal-elmofatiche/gfetch/releases), extract it, and add `gfetch.exe` to your `PATH`. Or with Go installed:
 
 ```powershell
-go install github.com/fayssal-elmofatiche/gtop/cmd/gtop@latest
+go install github.com/fayssal-elmofatiche/gfetch/cmd/gfetch@latest
 ```
 
 ### Go install (requires Go 1.23+)
 
 ```bash
-go install github.com/fayssal-elmofatiche/gtop/cmd/gtop@latest
+go install github.com/fayssal-elmofatiche/gfetch/cmd/gfetch@latest
 ```
 
 ### Download binary
 
-Pre-built binaries for Linux, macOS, and Windows (amd64/arm64) are available on the [Releases](https://github.com/fayssal-elmofatiche/gtop/releases) page.
+Pre-built binaries for Linux, macOS, and Windows (amd64/arm64) are available on the [Releases](https://github.com/fayssal-elmofatiche/gfetch/releases) page.
 
 ### Build from source
 
 ```bash
-git clone https://github.com/fayssal-elmofatiche/gtop.git
-cd gtop
-go build -o gtop ./cmd/gtop
+git clone https://github.com/fayssal-elmofatiche/gfetch.git
+cd gfetch
+go build -o gfetch ./cmd/gfetch
 ```
 
 ## Usage
 
 ```bash
 cd /path/to/any/git/repo
-gtop
+gfetch
 ```
 
-No flags, no config. Just run `gtop` inside a git repository.
+No flags, no config. Just run `gfetch` inside a git repository.
 
 ```bash
-gtop --version   # print version
+gfetch --version   # print version
 ```
 
 ## Screenshots
 
 **polars** (Rust)
 
-![gtop running on polars](assets/demo-polars.png)
+![gfetch running on polars](assets/demo-polars.png)
 
 **llama.cpp** (C++)
 
-![gtop running on llama.cpp](assets/demo-llama.png)
+![gfetch running on llama.cpp](assets/demo-llama.png)
 
 **react** (JavaScript)
 
-![gtop running on react](assets/demo-react.png)
+![gfetch running on react](assets/demo-react.png)
 
 ## How It Works
 
-gtop is a single-binary CLI tool written in Go. It gathers all data by shelling out to `git` commands — no external libraries for git interaction, no indexing, no caching. This keeps the tool simple and ensures it works with any git version.
+gfetch is a single-binary CLI tool written in Go. It gathers all data by shelling out to `git` commands — no external libraries for git interaction, no indexing, no caching. This keeps the tool simple and ensures it works with any git version.
 
 **Architecture:**
 
 | Package | Role |
 | --- | --- |
-| `cmd/gtop/` | Entry point — orchestrates data gathering and output |
+| `cmd/gfetch/` | Entry point — orchestrates data gathering and output |
 | `internal/git/` | All git data extraction via `exec.Command("git", ...)` |
 | `internal/ui/` | Terminal rendering — layout, heatmap, bar charts |
 
@@ -105,7 +105,7 @@ gtop is a single-binary CLI tool written in Go. It gathers all data by shelling 
 
 **Key design decisions:**
 
-- No interactive TUI — gtop is a one-shot display tool (like neofetch), not a persistent UI (like htop)
+- No interactive TUI — gfetch is a one-shot display tool (like neofetch), not a persistent UI (like htop)
 - No external git library — shelling out to `git` keeps the binary small and avoids CGO dependencies
 - Language detection by file extension weighted by byte size — simple heuristic, no tree-sitter or deep parsing
 - All sections are conditionally rendered — if there are no contributors, deps, or hot files, those sections are silently omitted

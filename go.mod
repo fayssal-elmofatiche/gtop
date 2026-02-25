@@ -1,4 +1,4 @@
-module github.com/fayssal-elmofatiche/gtop
+module github.com/fayssal-elmofatiche/gfetch
 
 go 1.23.4
 
