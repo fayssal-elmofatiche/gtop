@@ -268,72 +268,85 @@ var extToLang = map[string]string{
 	".scala": "Scala",
 }
 
-func GetLanguageStats() []LanguageStat {
-	// Use git ls-files to only count tracked files
+// CodeStats holds all file-derived metrics computed in a single git ls-files pass.
+type CodeStats struct {
+	Languages []LanguageStat
+	Size      string
+	FileCount int
+	LOC       int
+	TestRatio TestRatio
+}
+
+// GetCodeStats enumerates tracked files once and computes language stats,
+// repo size, lines of code, and test ratio in a single pass.
+func GetCodeStats() CodeStats {
 	out, err := runGit("ls-files")
 	if err != nil {
-		return nil
+		return CodeStats{Size: "0 B"}
+	}
+	files := strings.Split(strings.TrimSpace(out), "\n")
+	if len(files) == 1 && files[0] == "" {
+		return CodeStats{Size: "0 B"}
 	}
 
+	var totalSize int64
 	langBytes := make(map[string]int64)
-	var totalBytes int64
+	var totalCodeBytes int64
+	var totalLOC int
+	var codeLines, testLines int
 
-	for _, file := range strings.Split(out, "\n") {
+	for _, file := range files {
 		if file == "" {
 			continue
 		}
-		ext := strings.ToLower(filepath.Ext(file))
-		lang, ok := extToLang[ext]
-		if !ok {
-			continue // skip non-code files
-		}
+
 		info, err := os.Stat(file)
 		if err != nil {
 			continue
 		}
+		totalSize += info.Size()
+
+		ext := strings.ToLower(filepath.Ext(file))
+		lang, isCode := extToLang[ext]
+		if !isCode {
+			continue
+		}
+
 		size := info.Size()
 		langBytes[lang] += size
-		totalBytes += size
-	}
+		totalCodeBytes += size
 
-	if totalBytes == 0 {
-		return nil
-	}
-
-	var stats []LanguageStat
-	for lang, bytes := range langBytes {
-		pct := float64(bytes) / float64(totalBytes) * 100
-		color := languageColors[lang]
-		if color == "" {
-			color = languageColors["Other"]
+		data, err := os.ReadFile(file)
+		if err != nil {
+			continue
 		}
-		stats = append(stats, LanguageStat{Name: lang, Percentage: pct, Color: color})
-	}
+		lines := strings.Count(string(data), "\n")
+		if len(data) > 0 && data[len(data)-1] != '\n' {
+			lines++
+		}
+		totalLOC += lines
 
-	sort.Slice(stats, func(i, j int) bool {
-		return stats[i].Percentage > stats[j].Percentage
-	})
+		// Test classification
+		base := strings.ToLower(filepath.Base(file))
+		dir := strings.ToLower(filepath.Dir(file))
+		isTest := strings.Contains(base, "_test.") ||
+			strings.Contains(base, ".test.") ||
+			strings.Contains(base, ".spec.") ||
+			strings.Contains(base, "test_") ||
+			strings.Contains(dir, "/test/") ||
+			strings.Contains(dir, "/tests/") ||
+			strings.Contains(dir, "/__tests__/") ||
+			strings.HasPrefix(dir, "test/") ||
+			strings.HasPrefix(dir, "tests/")
 
-	return stats
-}
-
-func GetRepoSize() (string, int) {
-	out, err := runGit("ls-files")
-	if err != nil {
-		return "0 B", 0
-	}
-	files := strings.Split(strings.TrimSpace(out), "\n")
-	if len(files) == 1 && files[0] == "" {
-		return "0 B", 0
-	}
-
-	var totalSize int64
-	for _, f := range files {
-		if info, err := os.Stat(f); err == nil {
-			totalSize += info.Size()
+		if isTest {
+			testLines += lines
+		} else {
+			codeLines += lines
 		}
 	}
 
+	// Format size
 	var sizeStr string
 	switch {
 	case totalSize < 1024:
@@ -344,7 +357,35 @@ func GetRepoSize() (string, int) {
 		sizeStr = fmt.Sprintf("%.1f MB", float64(totalSize)/(1024*1024))
 	}
 
-	return sizeStr, len(files)
+	// Language stats
+	var stats []LanguageStat
+	if totalCodeBytes > 0 {
+		for lang, bytes := range langBytes {
+			pct := float64(bytes) / float64(totalCodeBytes) * 100
+			color := languageColors[lang]
+			if color == "" {
+				color = languageColors["Other"]
+			}
+			stats = append(stats, LanguageStat{Name: lang, Percentage: pct, Color: color})
+		}
+		sort.Slice(stats, func(i, j int) bool {
+			return stats[i].Percentage > stats[j].Percentage
+		})
+	}
+
+	// Test ratio
+	ratio := 0.0
+	if codeLines > 0 {
+		ratio = float64(testLines) / float64(codeLines)
+	}
+
+	return CodeStats{
+		Languages: stats,
+		Size:      sizeStr,
+		FileCount: len(files),
+		LOC:       totalLOC,
+		TestRatio: TestRatio{CodeLines: codeLines, TestLines: testLines, Ratio: ratio},
+	}
 }
 
 func GetContributors(max int) []Contributor {
@@ -376,32 +417,6 @@ func GetContributors(max int) []Contributor {
 	return contributors
 }
 
-func GetLinesOfCode() int {
-	out, err := runGit("ls-files")
-	if err != nil {
-		return 0
-	}
-	total := 0
-	for _, file := range strings.Split(out, "\n") {
-		if file == "" {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(file))
-		if _, ok := extToLang[ext]; !ok {
-			continue // only count code files
-		}
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		lines := strings.Count(string(data), "\n")
-		if len(data) > 0 && data[len(data)-1] != '\n' {
-			lines++ // count last line if no trailing newline
-		}
-		total += lines
-	}
-	return total
-}
 
 func GetLastActivity() string {
 	out, err := runGit("log", "-1", "--format=%ci")
@@ -843,10 +858,9 @@ func GetCICD() []string {
 	var detected []string
 	for _, ci := range ciSystems {
 		path := filepath.Join(root, ci.path)
-		if info, err := os.Stat(path); err == nil {
+		if _, err := os.Stat(path); err == nil {
 			if !seen[ci.name] {
 				seen[ci.name] = true
-				_ = info
 				detected = append(detected, ci.name)
 			}
 		}
@@ -895,61 +909,10 @@ func GetStashCount() int {
 	return len(strings.Split(out, "\n"))
 }
 
-// GetTestRatio counts code vs test lines
-func GetTestRatio() TestRatio {
-	out, err := runGit("ls-files")
-	if err != nil {
-		return TestRatio{}
-	}
-
-	var codeLines, testLines int
-	for _, file := range strings.Split(out, "\n") {
-		if file == "" {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(file))
-		if _, ok := extToLang[ext]; !ok {
-			continue
-		}
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		lines := strings.Count(string(data), "\n")
-		if len(data) > 0 && data[len(data)-1] != '\n' {
-			lines++
-		}
-
-		base := strings.ToLower(filepath.Base(file))
-		dir := strings.ToLower(filepath.Dir(file))
-		isTest := strings.Contains(base, "_test.") ||
-			strings.Contains(base, ".test.") ||
-			strings.Contains(base, ".spec.") ||
-			strings.Contains(base, "test_") ||
-			strings.HasPrefix(base, "test_") ||
-			strings.Contains(dir, "/test/") ||
-			strings.Contains(dir, "/tests/") ||
-			strings.Contains(dir, "/__tests__/") ||
-			strings.HasPrefix(dir, "test/") ||
-			strings.HasPrefix(dir, "tests/")
-
-		if isTest {
-			testLines += lines
-		} else {
-			codeLines += lines
-		}
-	}
-
-	ratio := 0.0
-	if codeLines > 0 {
-		ratio = float64(testLines) / float64(codeLines)
-	}
-	return TestRatio{CodeLines: codeLines, TestLines: testLines, Ratio: ratio}
-}
 
 // GetCommitConvention analyzes recent commits to detect convention style
 func GetCommitConvention() string {
-	out, err := runGit("log", "--oneline", "-50", "--pretty=%s")
+	out, err := runGit("log", "-50", "--pretty=%s")
 	if err != nil || out == "" {
 		return ""
 	}

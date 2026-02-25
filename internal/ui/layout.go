@@ -16,6 +16,26 @@ var (
 	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F0883E"))
 )
 
+// RenderParams holds all data needed to render the info panel.
+type RenderParams struct {
+	Info             git.Info
+	Size             string
+	FileCount        int
+	Languages        []git.LanguageStat
+	LOC              int
+	LastActivity     string
+	Velocity         git.Velocity
+	DepManager       string
+	DepCount         int
+	Health           git.BranchHealth
+	License          string
+	LatestTag        string
+	CICD             []string
+	StashCount       int
+	TestRatio        git.TestRatio
+	CommitConvention string
+}
+
 func RenderLogo(language string) string {
 	logo := getLanguageLogo(language)
 	return renderColoredArt(logo.art, logo.colors)
@@ -39,10 +59,10 @@ func formatLOC(loc int) string {
 	}
 }
 
-func RenderInfo(info git.Info, size string, fileCount int, languages []git.LanguageStat, loc int, lastActivity string, velocity git.Velocity, depManager string, depCount int, health git.BranchHealth, license string, latestTag string, cicd []string, stashCount int, testRatio git.TestRatio, commitConvention string) string {
+func RenderInfo(p RenderParams) string {
 	// Build language summary
 	var langParts []string
-	for i, l := range languages {
+	for i, l := range p.Languages {
 		if i >= 3 {
 			break
 		}
@@ -54,84 +74,84 @@ func RenderInfo(info git.Info, size string, fileCount int, languages []git.Langu
 	}
 
 	rows := []string{
-		row("Repository:", titleStyle.Render(info.RepoName)),
-		row("Branch:", fmt.Sprintf("%s %s", info.Branch, dimStyle.Render(fmt.Sprintf("(%s commits)", info.CommitCount)))),
-		row("Head:", fmt.Sprintf("%s %s", dimStyle.Render(info.CommitHash), info.LastCommitMessage)),
-		row("Created:", info.Created),
-		row("Last active:", lastActivity),
+		row("Repository:", titleStyle.Render(p.Info.RepoName)),
+		row("Branch:", fmt.Sprintf("%s %s", p.Info.Branch, dimStyle.Render(fmt.Sprintf("(%s commits)", p.Info.CommitCount)))),
+		row("Head:", fmt.Sprintf("%s %s", dimStyle.Render(p.Info.CommitHash), p.Info.LastCommitMessage)),
+		row("Created:", p.Info.Created),
+		row("Last active:", p.LastActivity),
 		row("Languages:", langSummary),
-		row("Size:", fmt.Sprintf("%s %s", size, dimStyle.Render(fmt.Sprintf("(%d files)", fileCount)))),
-		row("Lines:", formatLOC(loc)),
+		row("Size:", fmt.Sprintf("%s %s", p.Size, dimStyle.Render(fmt.Sprintf("(%d files)", p.FileCount)))),
+		row("Lines:", formatLOC(p.LOC)),
 	}
 
-	if info.RemoteURL != "" {
-		rows = append(rows, row("URL:", git.CleanURL(info.RemoteURL)))
+	if p.Info.RemoteURL != "" {
+		rows = append(rows, row("URL:", git.CleanURL(p.Info.RemoteURL)))
 	}
 
-	if latestTag != "" {
-		rows = append(rows, row("Version:", latestTag))
+	if p.LatestTag != "" {
+		rows = append(rows, row("Version:", p.LatestTag))
 	}
 
-	if license != "" {
-		rows = append(rows, row("License:", license))
+	if p.License != "" {
+		rows = append(rows, row("License:", p.License))
 	}
 
 	// Velocity
-	if velocity.Sparkline != "" {
+	if p.Velocity.Sparkline != "" {
 		trendStyle := dimStyle
-		if velocity.Trend == "↑" {
+		if p.Velocity.Trend == "↑" {
 			trendStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950"))
-		} else if velocity.Trend == "↓" {
+		} else if p.Velocity.Trend == "↓" {
 			trendStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F85149"))
 		}
-		rows = append(rows, row("Velocity:", fmt.Sprintf("%.1f/wk %s %s", velocity.PerWeek, velocity.Sparkline, trendStyle.Render(velocity.Trend))))
+		rows = append(rows, row("Velocity:", fmt.Sprintf("%.1f/wk %s %s", p.Velocity.PerWeek, p.Velocity.Sparkline, trendStyle.Render(p.Velocity.Trend))))
 	}
 
 	// Dependencies
-	if depCount > 0 {
-		rows = append(rows, row("Deps:", fmt.Sprintf("%d %s", depCount, dimStyle.Render("("+depManager+")"))))
+	if p.DepCount > 0 {
+		rows = append(rows, row("Deps:", fmt.Sprintf("%d %s", p.DepCount, dimStyle.Render("("+p.DepManager+")"))))
 	}
 
 	// Branch health
-	if health.TotalBranches > 0 {
-		branchStr := fmt.Sprintf("%d", health.TotalBranches)
-		if health.StaleBranches > 0 {
+	if p.Health.TotalBranches > 0 {
+		branchStr := fmt.Sprintf("%d", p.Health.TotalBranches)
+		if p.Health.StaleBranches > 0 {
 			staleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F85149"))
-			branchStr += fmt.Sprintf(" %s", staleStyle.Render(fmt.Sprintf("(%d stale)", health.StaleBranches)))
+			branchStr += fmt.Sprintf(" %s", staleStyle.Render(fmt.Sprintf("(%d stale)", p.Health.StaleBranches)))
 		}
-		if health.AheadBehind != "" {
-			branchStr += " " + dimStyle.Render(health.AheadBehind)
+		if p.Health.AheadBehind != "" {
+			branchStr += " " + dimStyle.Render(p.Health.AheadBehind)
 		}
 		rows = append(rows, row("Branches:", branchStr))
 	}
 
 	// CI/CD
-	if len(cicd) > 0 {
-		rows = append(rows, row("CI/CD:", strings.Join(cicd, ", ")))
+	if len(p.CICD) > 0 {
+		rows = append(rows, row("CI/CD:", strings.Join(p.CICD, ", ")))
 	}
 
 	// Test ratio
-	if testRatio.TestLines > 0 {
-		ratioStr := fmt.Sprintf("%.0f%% %s", testRatio.Ratio*100, dimStyle.Render(fmt.Sprintf("(%s test / %s code)", formatLOC(testRatio.TestLines), formatLOC(testRatio.CodeLines))))
+	if p.TestRatio.TestLines > 0 {
+		ratioStr := fmt.Sprintf("%.0f%% %s", p.TestRatio.Ratio*100, dimStyle.Render(fmt.Sprintf("(%s test / %s code)", formatLOC(p.TestRatio.TestLines), formatLOC(p.TestRatio.CodeLines))))
 		rows = append(rows, row("Tests:", ratioStr))
 	}
 
 	// Commit convention
-	if commitConvention != "" {
-		rows = append(rows, row("Commits:", commitConvention))
+	if p.CommitConvention != "" {
+		rows = append(rows, row("Commits:", p.CommitConvention))
 	}
 
 	// Stash
-	if stashCount > 0 {
+	if p.StashCount > 0 {
 		stashStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#D2A8FF"))
-		rows = append(rows, row("Stash:", stashStyle.Render(fmt.Sprintf("%d entries", stashCount))))
+		rows = append(rows, row("Stash:", stashStyle.Render(fmt.Sprintf("%d entries", p.StashCount))))
 	}
 
 	statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950"))
-	if info.Status != "clean" {
+	if p.Info.Status != "clean" {
 		statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F85149"))
 	}
-	rows = append(rows, row("Status:", statusStyle.Render(info.Status)))
+	rows = append(rows, row("Status:", statusStyle.Render(p.Info.Status)))
 
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
@@ -172,10 +192,10 @@ func RenderLanguageBar(languages []git.LanguageStat, width int) string {
 			break
 		}
 		if i > 0 {
-			legend.WriteString(dimStyle.Render("  "))
+			legend.WriteString("  ")
 		}
-		dot := lipgloss.NewStyle().Foreground(lipgloss.Color(lang.Color)).Render("●")
-		legend.WriteString(fmt.Sprintf("%s %s %s", dot, lang.Name, dimStyle.Render(fmt.Sprintf("%.1f%%", lang.Percentage))))
+		dotStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(lang.Color))
+		legend.WriteString(fmt.Sprintf("%s %s %s", dotStyle.Render("●"), lang.Name, dimStyle.Render(fmt.Sprintf("%.1f%%", lang.Percentage))))
 	}
 
 	return fmt.Sprintf("\n%s\n%s", bar.String(), legend.String())
@@ -192,13 +212,14 @@ func RenderContributors(contributors []git.Contributor) string {
 
 	maxCommits := contributors[0].Commits
 	barMax := 20
+	barStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6CB6FF"))
 
 	for _, c := range contributors {
 		w := int(float64(c.Commits) / float64(maxCommits) * float64(barMax))
 		if w < 1 {
 			w = 1
 		}
-		bar := lipgloss.NewStyle().Foreground(lipgloss.Color("#6CB6FF")).Render(strings.Repeat("█", w))
+		bar := barStyle.Render(strings.Repeat("█", w))
 		count := dimStyle.Render(fmt.Sprintf("%5d", c.Commits))
 		lines = append(lines, fmt.Sprintf("  %s %s %s", count, bar, valueStyle.Render(c.Name)))
 	}
@@ -216,13 +237,14 @@ func RenderHotFiles(files []git.HotFile) string {
 
 	maxChanges := files[0].Changes
 	barMax := 20
+	barStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F0883E"))
 
 	for _, f := range files {
 		w := int(float64(f.Changes) / float64(maxChanges) * float64(barMax))
 		if w < 1 {
 			w = 1
 		}
-		bar := lipgloss.NewStyle().Foreground(lipgloss.Color("#F0883E")).Render(strings.Repeat("█", w))
+		bar := barStyle.Render(strings.Repeat("█", w))
 		count := dimStyle.Render(fmt.Sprintf("%3d", f.Changes))
 		lines = append(lines, fmt.Sprintf("  %s %s %s", count, bar, valueStyle.Render(f.Path)))
 	}
@@ -238,8 +260,8 @@ func RenderReleases(releases []git.Release) string {
 	var lines []string
 	lines = append(lines, header)
 
+	tagStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950")).Bold(true)
 	for _, r := range releases {
-		tagStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950")).Bold(true)
 		lines = append(lines, fmt.Sprintf("  %s %s", tagStyle.Render(r.Tag), dimStyle.Render(r.Age)))
 	}
 	return "\n" + strings.Join(lines, "\n")

@@ -35,11 +35,8 @@ func main() {
 	}
 
 	var (
-		languages        []git.LanguageStat
-		size             string
-		fileCount        int
+		codeStats        git.CodeStats
 		contributors     []git.Contributor
-		loc              int
 		lastActivity     string
 		velocity         git.Velocity
 		depManager       string
@@ -52,7 +49,6 @@ func main() {
 		cicd             []string
 		releases         []git.Release
 		stashCount       int
-		testRatio        git.TestRatio
 		commitConvention string
 	)
 
@@ -61,25 +57,13 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		languages = git.GetLanguageStats()
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		size, fileCount = git.GetRepoSize()
+		codeStats = git.GetCodeStats()
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		contributors = git.GetContributors(5)
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		loc = git.GetLinesOfCode()
 	}()
 
 	wg.Add(1)
@@ -151,26 +135,37 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		testRatio = git.GetTestRatio()
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
 		commitConvention = git.GetCommitConvention()
 	}()
 
 	wg.Wait()
 
 	primaryLang := ""
-	if len(languages) > 0 {
-		primaryLang = languages[0].Name
+	if len(codeStats.Languages) > 0 {
+		primaryLang = codeStats.Languages[0].Name
 	}
 	logo := ui.RenderLogo(primaryLang)
-	info := ui.RenderInfo(gitInfo, size, fileCount, languages, loc, lastActivity, velocity, depManager, depCount, health, license, latestTag, cicd, stashCount, testRatio, commitConvention)
+	info := ui.RenderInfo(ui.RenderParams{
+		Info:             gitInfo,
+		Size:             codeStats.Size,
+		FileCount:        codeStats.FileCount,
+		Languages:        codeStats.Languages,
+		LOC:              codeStats.LOC,
+		LastActivity:     lastActivity,
+		Velocity:         velocity,
+		DepManager:       depManager,
+		DepCount:         depCount,
+		Health:           health,
+		License:          license,
+		LatestTag:        latestTag,
+		CICD:             cicd,
+		StashCount:       stashCount,
+		TestRatio:        codeStats.TestRatio,
+		CommitConvention: commitConvention,
+	})
 	fmt.Println(ui.RenderLayout(logo, info))
 
-	fmt.Println(ui.RenderLanguageBar(languages, 50))
+	fmt.Println(ui.RenderLanguageBar(codeStats.Languages, 50))
 
 	if len(contributors) > 0 {
 		fmt.Println(ui.RenderContributors(contributors))
