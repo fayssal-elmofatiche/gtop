@@ -5,13 +5,21 @@ A fast, zero-config, terminal-based git repository information tool. Think [onef
 ## Features
 
 - **Repository info** — branch, head commit, remote URL, working tree status
+- **Language-based ASCII logos** — shows the primary language's icon (15 languages, adapted from [onefetch](https://github.com/o2sh/onefetch))
 - **Language breakdown** — colored proportional bar with percentages (weighted by file size)
 - **Top contributors** — bar chart of most active authors by commit count
 - **Lines of code** — total across all detected source files
 - **Repo age & last activity** — human-readable timestamps
+- **License detection** — reads LICENSE/COPYING files and identifies MIT, Apache, GPL, BSD, MPL, and more
+- **Version tag** — displays the latest git tag
 - **Commit velocity** — average commits/week with sparkline trend over the last 8 weeks
 - **Dependency count** — auto-detects Go modules, npm, pip, Cargo, Bundler, Composer, and more
 - **Branch health** — total branches, stale branch count (>30 days), ahead/behind default branch
+- **CI/CD detection** — detects GitHub Actions, GitLab CI, Jenkins, CircleCI, GoReleaser, Docker, and more
+- **Test ratio** — code-to-test ratio with line counts
+- **Commit conventions** — detects Conventional Commits, Gitmoji, or Freeform styles
+- **Stash count** — shows pending stashed changes
+- **Recent releases** — timeline of the last 5 tags with human-readable ages
 - **Hot files** — most frequently changed files in the last 90 days with proportional bars
 - **Commit heatmap** — GitHub-style contribution graph for the past year (7-row daily grid, 5 intensity levels)
 
@@ -57,39 +65,49 @@ gtop --version   # print version
 ## Example Output
 
 ```
-╭─────────────────────────────╮   Repository:   owner/repo
-│                             │   Branch:       main (142 commits)
-│     ____ _____ ___  ____    │   Head:         a1b2c3d add new feature
-│    / ___|_   _/ _ \|  _ \   │   Created:      8 months ago
-│   | |  _  | || | | | |_) |  │   Last active:  today
-│   | |_| | | || |_| |  __/   │   Languages:    Go 85.2%, Shell 14.8%
-│    \____| |_| \___/|_|      │   Size:         48.3 KB (12 files)
-╰─────────────────────────────╯   Lines:        1.2K
-                                  URL:          github.com/owner/repo.git
-                                  Velocity:     2.4/wk ▂▃▅▇█▆▃▄ ↑
-                                  Deps:         12 (Go modules)
-                                  Branches:     5 (1 stale)
-                                  Status:       clean
+                 R RR RR                  Repository:   pola-rs/polars
+              R RRRRRRRR R          R     Branch:       main (14284 commits)
+ R RR       R RRRRRRRRRRRRR R      RR    Head:         4ce1112 docs: Include invalidate_caches
+rR RRR    R RRRRRRRRRRRRRRRRR R   RRR R  Created:      5 years ago
+RRR RR   RRRRRRRRRRRRRRRRRRRRRRR  RRRRR  Last active:  1 day ago
+ RRRRR  RRRRRRRRRRRRRRRRRRRRRRRR  RRRR   Languages:    Rust 63.1%, Python 36.8%, HTML 0.1%
+  RRR RRRRRRRRRRRRRRRRRRRRRRRRRRRR RR    Size:         24.3 MB (3263 files)
+    R  RRRRRRRRRR=  RR = RRRRRRRRRRR     Lines:        711.1K
+     RRRRRRRRRRRR=  RR = RRRRRRRRRR      URL:          github.com/pola-rs/polars
+      RRRRRRRRRRR   RR   RRRRRRRRRR      Version:      rs-0.53.0
+     RR==RRRRRRRRRRRRRRRRRRRRRR===RR     License:      MIT
+     RR =  ==RRRRRRR  RRRRRR==  = RR    Velocity:     45.4/wk ▃▇▅█▅▇▆▅ ↑
+      RR =     ===========     = RR      Deps:         12 (Go modules)
+       RR                        R       Branches:     27
+        R                       R        CI/CD:        GitHub Actions, Make
+         R                               Tests:        31% (167.0K test / 544.1K code)
+                                         Commits:      Conventional (scoped)
+                                         Status:       clean
 
 ██████████████████████████████████████████████████
-● Go 85.2%  ● Shell 14.8%
+● Rust 63.1%  ● Python 36.8%  ● HTML 0.1%
 
 Top Authors
-    98 ████████████████████ Alice
-    44 ████████             Bob
-    12 ██                   Charlie
+   4987 ████████████████████ Ritchie Vink
+   1206 ████                 Stijn de Gooijer
+    994 ███                  ritchie46
 
 Hot Files (90 days)
-   18 ████████████████████ internal/git/git.go
-   12 █████████████        cmd/gtop/main.go
-    7 ███████              internal/ui/layout.go
+   32 ████████████████████ crates/polars-stream/src/physical_plan/lower_ir.rs
+   29 ██████████████████   py-polars/src/polars/lazyframe/frame.py
+   28 █████████████████    crates/polars-stream/src/physical_plan/to_graph.rs
+
+Releases
+  rs-0.53.0  13 days ago
+  py-1.38.1  16 days ago
+  py-1.38.0  18 days ago
 
 Commit Activity (past year)
      Mar     Apr     May     Jun     Jul     Aug     ...
  Mon █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █
  Wed █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █
  Fri █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █
-     Less █ █ █ █ █ More
+     Less ░ █ █ █ █ More
 ```
 
 ## How It Works
