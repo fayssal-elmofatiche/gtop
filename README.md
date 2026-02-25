@@ -62,53 +62,19 @@ No flags, no config. Just run `gtop` inside a git repository.
 gtop --version   # print version
 ```
 
-## Example Output
+## Screenshots
 
-```
-                 R RR RR                  Repository:   pola-rs/polars
-              R RRRRRRRR R          R     Branch:       main (14284 commits)
- R RR       R RRRRRRRRRRRRR R      RR    Head:         4ce1112 docs: Include invalidate_caches
-rR RRR    R RRRRRRRRRRRRRRRRR R   RRR R  Created:      5 years ago
-RRR RR   RRRRRRRRRRRRRRRRRRRRRRR  RRRRR  Last active:  1 day ago
- RRRRR  RRRRRRRRRRRRRRRRRRRRRRRR  RRRR   Languages:    Rust 63.1%, Python 36.8%, HTML 0.1%
-  RRR RRRRRRRRRRRRRRRRRRRRRRRRRRRR RR    Size:         24.3 MB (3263 files)
-    R  RRRRRRRRRR=  RR = RRRRRRRRRRR     Lines:        711.1K
-     RRRRRRRRRRRR=  RR = RRRRRRRRRR      URL:          github.com/pola-rs/polars
-      RRRRRRRRRRR   RR   RRRRRRRRRR      Version:      rs-0.53.0
-     RR==RRRRRRRRRRRRRRRRRRRRRR===RR     License:      MIT
-     RR =  ==RRRRRRR  RRRRRR==  = RR    Velocity:     45.4/wk ▃▇▅█▅▇▆▅ ↑
-      RR =     ===========     = RR      Deps:         12 (Go modules)
-       RR                        R       Branches:     27
-        R                       R        CI/CD:        GitHub Actions, Make
-         R                               Tests:        31% (167.0K test / 544.1K code)
-                                         Commits:      Conventional (scoped)
-                                         Status:       clean
+**polars** (Rust)
 
-██████████████████████████████████████████████████
-● Rust 63.1%  ● Python 36.8%  ● HTML 0.1%
+![gtop running on polars](assets/demo-polars.png)
 
-Top Authors
-   4987 ████████████████████ Ritchie Vink
-   1206 ████                 Stijn de Gooijer
-    994 ███                  ritchie46
+**llama.cpp** (C++)
 
-Hot Files (90 days)
-   32 ████████████████████ crates/polars-stream/src/physical_plan/lower_ir.rs
-   29 ██████████████████   py-polars/src/polars/lazyframe/frame.py
-   28 █████████████████    crates/polars-stream/src/physical_plan/to_graph.rs
+![gtop running on llama.cpp](assets/demo-llama.png)
 
-Releases
-  rs-0.53.0  13 days ago
-  py-1.38.1  16 days ago
-  py-1.38.0  18 days ago
+**react** (JavaScript)
 
-Commit Activity (past year)
-     Mar     Apr     May     Jun     Jul     Aug     ...
- Mon █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █
- Wed █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █
- Fri █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █
-     Less ░ █ █ █ █ More
-```
+![gtop running on react](assets/demo-react.png)
 
 ## How It Works
 
