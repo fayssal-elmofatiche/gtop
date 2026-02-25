@@ -26,6 +26,7 @@ brews:
   - repository:
       owner: fayssal-elmofatiche
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: https://github.com/fayssal-elmofatiche/gtop
     description: A fast, terminal-based git repository info tool
     license: MIT
