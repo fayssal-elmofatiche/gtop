@@ -31,6 +31,14 @@ A fast, zero-config, terminal-based git repository information tool. Think [onef
 brew install fayssal-elmofatiche/tap/gtop
 ```
 
+### Windows
+
+Download the latest `.zip` from [Releases](https://github.com/fayssal-elmofatiche/gtop/releases), extract it, and add `gtop.exe` to your `PATH`. Or with Go installed:
+
+```powershell
+go install github.com/fayssal-elmofatiche/gtop/cmd/gtop@latest
+```
+
 ### Go install (requires Go 1.23+)
 
 ```bash
