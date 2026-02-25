@@ -21,6 +21,7 @@ type Info struct {
 	Status            string
 	RepoName          string
 	Created           string
+	GitVersion        string
 }
 
 type LanguageStat struct {
@@ -95,6 +96,9 @@ func GetInfo() (Info, error) {
 	info.RepoName = extractRepoName(info.RemoteURL)
 	info.Created = getRepoAge()
 	info.Status = getStatusSummary()
+	if v, err := runGit("version"); err == nil {
+		info.GitVersion = strings.TrimPrefix(v, "git version ")
+	}
 
 	return info, nil
 }
@@ -388,12 +392,18 @@ func GetCodeStats() CodeStats {
 	}
 }
 
-func GetContributors(max int) []Contributor {
+// ContributorStats holds the top contributors and total contributor count.
+type ContributorStats struct {
+	Top   []Contributor
+	Total int
+}
+
+func GetContributors(max int) ContributorStats {
 	out, err := runGit("shortlog", "-sn", "--no-merges", "HEAD")
 	if err != nil {
-		return nil
+		return ContributorStats{}
 	}
-	var contributors []Contributor
+	var all []Contributor
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -406,15 +416,16 @@ func GetContributors(max int) []Contributor {
 		}
 		count := 0
 		fmt.Sscanf(strings.TrimSpace(parts[0]), "%d", &count)
-		contributors = append(contributors, Contributor{
+		all = append(all, Contributor{
 			Name:    strings.TrimSpace(parts[1]),
 			Commits: count,
 		})
-		if len(contributors) >= max {
-			break
-		}
 	}
-	return contributors
+	top := all
+	if len(top) > max {
+		top = top[:max]
+	}
+	return ContributorStats{Top: top, Total: len(all)}
 }
 
 

@@ -36,7 +36,7 @@ func main() {
 
 	var (
 		codeStats        git.CodeStats
-		contributors     []git.Contributor
+		contribStats     git.ContributorStats
 		lastActivity     string
 		velocity         git.Velocity
 		depManager       string
@@ -63,7 +63,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		contributors = git.GetContributors(5)
+		contribStats = git.GetContributors(5)
 	}()
 
 	wg.Add(1)
@@ -160,6 +160,7 @@ func main() {
 		LatestTag:        latestTag,
 		CICD:             cicd,
 		StashCount:       stashCount,
+		Contributors:     contribStats.Total,
 		TestRatio:        codeStats.TestRatio,
 		CommitConvention: commitConvention,
 	})
@@ -167,8 +168,8 @@ func main() {
 
 	fmt.Println(ui.RenderLanguageBar(codeStats.Languages, 50))
 
-	if len(contributors) > 0 {
-		fmt.Println(ui.RenderContributors(contributors))
+	if len(contribStats.Top) > 0 {
+		fmt.Println(ui.RenderContributors(contribStats))
 	}
 
 	if len(hotFiles) > 0 {

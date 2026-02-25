@@ -32,6 +32,7 @@ type RenderParams struct {
 	LatestTag        string
 	CICD             []string
 	StashCount       int
+	Contributors     int
 	TestRatio        git.TestRatio
 	CommitConvention string
 }
@@ -77,6 +78,7 @@ func RenderInfo(p RenderParams) string {
 		row("Repository:", titleStyle.Render(p.Info.RepoName)),
 		row("Branch:", fmt.Sprintf("%s %s", p.Info.Branch, dimStyle.Render(fmt.Sprintf("(%s commits)", p.Info.CommitCount)))),
 		row("Head:", fmt.Sprintf("%s %s", dimStyle.Render(p.Info.CommitHash), p.Info.LastCommitMessage)),
+		row("Author:", fmt.Sprintf("%s %s", p.Info.UserName, dimStyle.Render(fmt.Sprintf("<%s>", p.Info.UserEmail)))),
 		row("Created:", p.Info.Created),
 		row("Last active:", p.LastActivity),
 		row("Languages:", langSummary),
@@ -86,6 +88,10 @@ func RenderInfo(p RenderParams) string {
 
 	if p.Info.RemoteURL != "" {
 		rows = append(rows, row("URL:", git.CleanURL(p.Info.RemoteURL)))
+	}
+
+	if p.Contributors > 0 {
+		rows = append(rows, row("Authors:", fmt.Sprintf("%d", p.Contributors)))
 	}
 
 	if p.LatestTag != "" {
@@ -147,6 +153,10 @@ func RenderInfo(p RenderParams) string {
 		rows = append(rows, row("Stash:", stashStyle.Render(fmt.Sprintf("%d entries", p.StashCount))))
 	}
 
+	if p.Info.GitVersion != "" {
+		rows = append(rows, row("Git:", p.Info.GitVersion))
+	}
+
 	statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FB950"))
 	if p.Info.Status != "clean" {
 		statusStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F85149"))
@@ -201,27 +211,38 @@ func RenderLanguageBar(languages []git.LanguageStat, width int) string {
 	return fmt.Sprintf("\n%s\n%s", bar.String(), legend.String())
 }
 
-func RenderContributors(contributors []git.Contributor) string {
-	if len(contributors) == 0 {
+func RenderContributors(stats git.ContributorStats) string {
+	if len(stats.Top) == 0 {
 		return ""
 	}
 
-	header := titleStyle.Render("Top Authors")
+	totalLabel := ""
+	if stats.Total > len(stats.Top) {
+		totalLabel = dimStyle.Render(fmt.Sprintf(" (%d total)", stats.Total))
+	}
+	header := titleStyle.Render("Top Authors") + totalLabel
 	var lines []string
 	lines = append(lines, header)
 
-	maxCommits := contributors[0].Commits
+	// Sum all commits across top authors for percentage calculation
+	totalCommits := 0
+	for _, c := range stats.Top {
+		totalCommits += c.Commits
+	}
+
+	maxCommits := stats.Top[0].Commits
 	barMax := 20
 	barStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6CB6FF"))
 
-	for _, c := range contributors {
+	for _, c := range stats.Top {
 		w := int(float64(c.Commits) / float64(maxCommits) * float64(barMax))
 		if w < 1 {
 			w = 1
 		}
 		bar := barStyle.Render(strings.Repeat("█", w))
-		count := dimStyle.Render(fmt.Sprintf("%5d", c.Commits))
-		lines = append(lines, fmt.Sprintf("  %s %s %s", count, bar, valueStyle.Render(c.Name)))
+		pct := float64(c.Commits) / float64(totalCommits) * 100
+		label := dimStyle.Render(fmt.Sprintf("%5.1f%%", pct))
+		lines = append(lines, fmt.Sprintf("  %s %s %s %s", label, bar, valueStyle.Render(c.Name), dimStyle.Render(fmt.Sprintf("(%d)", c.Commits))))
 	}
 	return "\n" + strings.Join(lines, "\n")
 }
